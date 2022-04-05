@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # import specific functions
 # note: all of these are R objects that will be used throughout this .rmd file
 
-source(here::here("data/labs/wk03/utilities.R"))
+source(here::here("/labs/wk03/utilities.R"))
 
 import::here("clean_d",
              "tidy_up_data",
@@ -35,6 +35,7 @@ library( pander )
 library( stargazer)
 library(histogram)
 library(scales)
+library(ggplot2)
 # note: please do not use static file paths
 # note: notice down below the use of here::here()
 d1 <- readRDS( here::here( "data/rodeo/LTDB-1990.rds" ) )
@@ -54,12 +55,40 @@ d <- merge( d, md, by="tractid" )
 nrow( d )
 
 table( d$urban )
+
 d <- filter( d, urban == "urban" )
 
 ```
 Identify Common Variables
 
 ```{r}
+compare_dfs <- function( df1, df2 )
+{
+  # use regular expressions to remove numeric suffixes 
+  var.names.1 <- names( df1 )
+  var.names.1 <- gsub( "[.][xy]$", "", var.names.1 )
+  var.names.1 <- gsub( "[0-9]{2}$", "", var.names.1 )
+  
+  var.names.2 <- names( df2 )
+  var.names.2 <- gsub( "[.][xy]$", "", var.names.2 )
+  var.names.2 <- gsub( "[0-9]{2}$", "", var.names.2 )
+  
+  shared <- intersect( var.names.1, var.names.2 ) %>% sort()
+  print( "SHARED VARIABLES:")
+  print( shared )
+  
+  not.shared <- c( setdiff( var.names.1, var.names.2 ),
+                   setdiff( var.names.2, var.names.1 ) ) %>% sort()
+  
+  print( "NOT SHARED:" )
+  print( not.shared )
+  
+  d.vars1 <- data.frame( type="shared", variables=shared, stringsAsFactors=F )
+  d.vars2 <- data.frame( type="not shared", variables=not.shared, stringsAsFactors=F )
+  dd <- rbind( d.vars1, d.vars2 )
+  
+  return( dd )
+}
 vars <- compare_dfs( df1=d1, df2=d2 )
 head( vars )
 
@@ -204,6 +233,73 @@ df <- data.frame( v90=mhv.90/1000, v00=mhv.00/1000 )
 df <- sample_n( df, 1000 )
 
 par( mar=c(4,5,3,2) )
+```
+
+```{r}
+jplot <- function( x1, x2, lab1="", lab2="", draw.line=T, ... )
+{
+
+    plot( x1, x2,
+          pch=19, 
+          col=gray(0.6, alpha = 0.2), 
+          cex=2.5,  
+          bty = "n",
+          xlab=lab1, 
+          ylab=lab2, cex.lab=1.5,
+        ... )
+
+    if( draw.line==T ){ 
+        ok <- is.finite(x1) & is.finite(x2)
+        lines( lowess(x2[ok]~x1[ok]), col="red", lwd=3 ) }
+
+}
+layout.matrix <- matrix( c( 1,3,
+                            2,3 ), 
+                nrow=2, ncol=2, byrow=T )
+
+layout( mat = layout.matrix,
+        heights = c(2,2), # Heights of the two rows
+        widths =  c(3,4)) # Widths of the two columns
+
+# layout.show(3)
+
+par( mar=c(4,0,0,2) )
+
+hist( mhv.90/1000, breaks=50, 
+      xlim=c(-200,800), yaxt="n", xaxt="n",
+      xlab="", cex.lab=1,
+      ylab="", main="",
+      col="darkslateblue", border="white" )
+
+axis( side=1, at=seq( from=0, to=1000, by=100 ), 
+      labels=paste0( "$", seq( from=0, to=1000, by=100 ), "k" ) )
+
+abline( v=seq(0,1000,100), lty=2, col="gray80" )
+
+text( 550, 4000, labels="Median Home \nValue in 2000", 
+      col="darkslateblue", cex=1.8 )
+
+
+
+hist( mhv.00/1000, breaks=50, 
+      xlim=c(-200,800), yaxt="n", xaxt="n",
+      xlab="", cex.lab=1,
+      ylab="", main="",
+      col="darkslateblue", border="white" )
+
+abline( v=seq(0,1000, 100 ), lty=2, col="gray80" )
+
+text( 550, 3500, labels="Median Home \nValue in 2010", 
+      col="darkslateblue", cex=1.8 )
+
+axis( side=1, at=seq( from=0, to=1000, by=100 ), 
+      labels=paste0( "$", seq( from=0, to=1000, by=100 ), "k" ) )
+
+
+df <- data.frame( v90=mhv.90/1000, v00=mhv.00/1000 )
+df <- sample_n( df, 1000 )
+
+par( mar=c(4,5,3,2) )
 
 jplot( df$v90, df$v00, 
        lab1="MHV in 1990", lab2="MHV in 2000",
@@ -280,8 +376,8 @@ text( x=1, y=(0.6*ymax),
 Group Growth Rates by Metro Area
 
 ```{r}
-d$mhv.change <- mhv.change 
-d$pct.change <- pct.change
+mhv.change <- d$mhv.change
+pct.change  <-  d$pct.change
 d$mhv.90 <- mhv.90
 d$mhv.00 <- mhv.00
 

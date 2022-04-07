@@ -1,0 +1,895 @@
+---
+title: "Lab#3"
+Author: Mariam Mahmoud
+Date: 4/7/2022
+output: html_document
+date: '2022-04-06'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+Start Tutorial 
+
+```{r}
+
+# Install import package
+install.packages("import")
+
+#load and unload here package to reset it for use in the lab
+
+
+library(here)
+detach("package:here", unload = TRUE) 
+
+
+```
+
+```{r}
+
+# load necessary packages ----
+library( dplyr )
+library( import )
+library( here )
+library( knitr )
+library( pander )
+
+
+```
+
+
+
+
+```{r}
+
+# import specific functions
+# note: all of these are R objects that will be used throughout this .rmd file
+import::here("clean_d",
+             "tidy_up_data",
+             "build_year",
+             "RELEVANT_FILES",
+             "obtain_crosswalk",
+             "create_final_metadata_file",
+             # notice the use of here::here() that points to the .R file
+             # where all these R objects are created
+             .from = here::here("labs/utilities.R"),
+             .character_only = TRUE)
+
+
+```
+
+
+Inspect Data: Check 2010 Data
+
+```{r}
+
+# load all data as character vecs
+d.2010.samp <- read.csv( here::here("data/raw/ltdb_std_2010_sample.csv"),
+                         colClasses="character" )
+str( d.2010.samp[1:10] )
+
+head( d.2010.samp$p65hsp12 ) # missing values coded as -999
+
+sum( d.2010.samp$p65hsp12 == "-999" )
+
+```
+
+
+Tidy Up Dataframes
+
+
+```{r}
+file.name <- "ltdb_std_2010_sample.csv"
+d.2010.s <- tidy_up_data( file.name )
+head( d.2010.s[1:20] ) %>% pander()
+
+file.name <- "LTDB_Std_2010_fullcount.csv"
+d.2010.f <- tidy_up_data( file.name )
+head( d.2010.f[1:20] ) %>% pander()
+
+d2 <- bind_rows( d.2010.s, d.2010.f )
+
+
+file.name <- "ltdb_std_2000_sample.csv"
+d.2010.s <- tidy_up_data( file.name )
+head( d.2010.s[1:20] ) %>% pander()
+
+file.name <- "LTDB_Std_2000_fullcount.csv"
+d.2010.f <- tidy_up_data( file.name )
+head( d.2010.f[1:20] ) %>% pander()
+
+d2 <- bind_rows( d.2010.s, d.2010.f )
+
+
+# for each relevant file, run the build_year() function
+# note: this populates the data/rodeo/ directory with clean files
+for (relevant_file in RELEVANT_FILES) {
+  print(paste0("Starting on ", relevant_file[["year"]]))
+  build_year(fn1 = relevant_file[["fullcount"]],
+             fn2 = relevant_file[["sample"]],
+             year = relevant_file[["year"]])
+  if (relevant_file[["year"]] < 2010) {
+    print("Finished! Moving onto the next decade.")
+  } else {
+    print("Finished! No more data to parse.")
+  }
+  
+}
+
+
+
+```
+
+
+
+
+```{r}
+
+# import the clean file 
+d <- readRDS( here::here( "data/rodeo/LTDB-2000.rds" ) )
+head( d ) %>% pander()
+
+```
+
+
+```{r}
+# load the crosswalk
+# note: this stores a copy in the data/raw/ directory
+cw <- obtain_crosswalk()
+
+# view all metro areas in the country
+sort( unique( cw$cbsaname ) ) %>% head() %>% pander()
+
+# note in the data dictionary for CBSA Name (copied below): “blanks are rural”
+table( cw$urban ) %>% pander()
+
+
+
+```
+Introduction 
+
+
+```{r}
+
+library( dplyr )
+library( here )
+library( knitr )
+library( pander )
+library( stargazer )
+library( scales )
+
+# set stargazer type to text for 
+# previewing in RMD docs but
+# convert to type HTML when knitting
+# (next code chunk)
+
+s.type <- "text"  
+
+```
+
+
+Data
+
+
+```{r}
+# note: please do not use static file paths
+# note: notice down below the use of here::here()
+d1 <- readRDS( here::here( "data/rodeo/LTDB-2000.rds" ) )
+d2 <- readRDS( here::here( "data/rodeo/LTDB-2010.rds" ) )
+md <- readRDS( here::here( "data/rodeo/LTDB-META-DATA.rds" ) )
+
+# check to make sure we are not losing 
+# or gaining observations in the merge
+nrow( d1 ) 
+
+
+d1 <- select( d1, - year )
+d2 <- select( d2, - year )
+
+d <- merge( d1, d2, by="tractid" )
+d <- merge( d, md, by="tractid" )
+
+nrow( d )
+
+table( d$urban )
+
+d.full1 <- filter( d, urban == "urban" )
+
+
+
+```
+
+
+Identify Common Variables
+
+```{r}
+compare_dfs <- function( df1, df2 )
+{
+  # use regular expressions to remove numeric suffixes 
+  var.names.1 <- names( df1 )
+  var.names.1 <- gsub( "[.][xy]$", "", var.names.1 )
+  var.names.1 <- gsub( "[0-9]{2}$", "", var.names.1 )
+  
+  var.names.2 <- names( df2 )
+  var.names.2 <- gsub( "[.][xy]$", "", var.names.2 )
+  var.names.2 <- gsub( "[0-9]{2}$", "", var.names.2 )
+  
+  shared <- intersect( var.names.1, var.names.2 ) %>% sort()
+  print( "SHARED VARIABLES:")
+  print( shared )
+  
+  not.shared <- c( setdiff( var.names.1, var.names.2 ),
+                   setdiff( var.names.2, var.names.1 ) ) %>% sort()
+  
+  print( "NOT SHARED:" )
+  print( not.shared )
+  
+  d.vars1 <- data.frame( type="shared", variables=shared, stringsAsFactors=F )
+  d.vars2 <- data.frame( type="not shared", variables=not.shared, stringsAsFactors=F )
+  dd <- rbind( d.vars1, d.vars2 )
+  
+  return( dd )
+}
+vars <- compare_dfs( df1=d1, df2=d2 )
+head( vars )
+
+```
+
+Create Dataset for Analysis
+
+```{r}
+
+d.full <- d  # keep a copy so don't have to reload 
+
+d <- d.full  # store original in case you need to reset anything
+
+d <- select( d, tractid, mhmval00, mhmval90, hinc90, 
+             hu90, own90, rent90,  
+             empclf90, clf90, unemp90, prof90,  
+             dpov90, npov90,
+             ag25up90, hs90, col90, 
+             pop90.x, nhwht90, nhblk90, hisp90, asian90,
+             cbsa, cbsaname )
+d <- 
+  d %>%
+  mutate( p.white = 100 * nhwht90 / pop90.x,
+          p.black = 100 * nhblk90 / pop90.x,
+          p.hisp = 100 * hisp90 / pop90.x, 
+          p.asian = 100 * asian90 / pop90.x,
+          p.hs = 100 * (hs90+col90) / ag25up90,
+          p.col = 100 * col90 / ag25up90,
+          p.prof = 100 * prof90 / empclf90,
+          p.unemp = 100 * unemp90 / clf90,
+          pov.rate = 100 * npov90 / dpov90 )
+
+```
+
+```{r}
+stargazer( d, 
+           type= "text", 
+           digits=0,
+           summary.stat = c("min", "p25","median","mean","p75","max") )
+```
+
+Exploration of Median Home Value
+
+```{r}
+# adjust 2000 home values for inflation 
+mhv.90 <- d$mhmval90 * 1.31
+mhv.00 <- d$mhmval00
+
+mhv.change <- mhv.00 - mhv.90
+
+df <- data.frame( MedianHomeValue1990=mhv.90, 
+                  MedianHomeValue2000=mhv.00, 
+                  Change.90.to.00=mhv.change )
+
+stargazer( df, 
+           type= "text", 
+           digits=0, 
+           summary.stat = c("min", "p25","median","mean","p75","max") )
+```
+
+Inflation
+https://westegg.com/inflation/
+
+```{r}
+# 10 year inflation factor
+(1.031)^10
+
+```
+Histogram of MHV
+
+```{r}
+hist( mhv.change/1000, breaks=500, 
+      xlim=c(-100,500), yaxt="n", xaxt="n",
+      xlab="Thousand of US Dollars (adjusted to 2000)", cex.lab=1.5,
+      ylab="", main="Change in Median Home Value 1990 to 2000",
+      col="gray20", border="white" )
+
+axis( side=1, at=seq( from=-100, to=500, by=100 ), 
+      labels=paste0( "$", seq( from=-100, to=500, by=100 ), "k" ) )
+        
+mean.x <- mean( mhv.change/1000, na.rm=T )
+abline( v=mean.x, col="darkorange", lwd=2, lty=2 )
+text( x=200, y=1500, 
+      labels=paste0( "Mean = ",  round(1000*mean.x,0)) , 
+      col="darkorange", cex=1.8, pos=3 )
+
+median.x <- median( mhv.change/1000, na.rm=T )
+abline( v=median.x, col="dodgerblue", lwd=2, lty=2 )
+text( x=200, y=2000, 
+      labels=paste0( "Median = ",  round(1000*median.x,0)) , 
+      col="dodgerblue", cex=1.8, pos=3 )
+```
+
+```{r}
+# function to control plot() formatting 
+
+layout.matrix <- matrix( c( 1,3,
+                            2,3 ), 
+                nrow=2, ncol=2, byrow=T )
+
+layout( mat = layout.matrix,
+        heights = c(2,2), # Heights of the two rows
+        widths =  c(3,4)) # Widths of the two columns
+
+# layout.show(3)
+
+par( mar=c(4,0,0,2) )
+
+hist( mhv.90/1000, breaks=50, 
+      xlim=c(-200,800), yaxt="n", xaxt="n",
+      xlab="", cex.lab=1,
+      ylab="", main="",
+      col="darkslateblue", border="white" )
+
+axis( side=1, at=seq( from=0, to=1000, by=100 ), 
+      labels=paste0( "$", seq( from=0, to=1000, by=100 ), "k" ) )
+
+abline( v=seq(0,1000,100), lty=2, col="gray80" )
+
+text( 550, 4000, labels="Median Home \nValue in 1990", 
+      col="darkslateblue", cex=1.8 )
+
+
+
+hist( mhv.00/1000, breaks=50, 
+      xlim=c(-200,800), yaxt="n", xaxt="n",
+      xlab="", cex.lab=1,
+      ylab="", main="",
+      col="darkslateblue", border="white" )
+
+abline( v=seq(0,1000, 100 ), lty=2, col="gray80" )
+
+text( 550, 3500, labels="Median Home \nValue in 2000", 
+      col="darkslateblue", cex=1.8 )
+
+axis( side=1, at=seq( from=0, to=1000, by=100 ), 
+      labels=paste0( "$", seq( from=0, to=1000, by=100 ), "k" ) )
+
+
+# data reduction - filter 1,000 observations
+
+df <- data.frame( v90=mhv.90/1000, v00=mhv.00/1000 )
+df <- sample_n( df, 1000 )
+
+par( mar=c(4,5,3,2) )
+```
+
+```{r}
+jplot <- function( x1, x2, lab1="", lab2="", draw.line=T, ... )
+{
+
+    plot( x1, x2,
+          pch=19, 
+          col=gray(0.6, alpha = 0.2), 
+          cex=2.5,  
+          bty = "n",
+          xlab=lab1, 
+          ylab=lab2, cex.lab=1.5,
+        ... )
+
+    if( draw.line==T ){ 
+        ok <- is.finite(x1) & is.finite(x2)
+        lines( lowess(x2[ok]~x1[ok]), col="red", lwd=3 ) }
+
+}
+layout.matrix <- matrix( c( 1,3,
+                            2,3 ), 
+                nrow=2, ncol=2, byrow=T )
+
+layout( mat = layout.matrix,
+        heights = c(2,2), # Heights of the two rows
+        widths =  c(3,4)) # Widths of the two columns
+
+# layout.show(3)
+
+par( mar=c(4,0,0,2) )
+
+hist( mhv.90/1000, breaks=50, 
+      xlim=c(-200,800), yaxt="n", xaxt="n",
+      xlab="", cex.lab=1,
+      ylab="", main="",
+      col="darkslateblue", border="white" )
+
+axis( side=1, at=seq( from=0, to=1000, by=100 ), 
+      labels=paste0( "$", seq( from=0, to=1000, by=100 ), "k" ) )
+
+abline( v=seq(0,1000,100), lty=2, col="gray80" )
+
+text( 550, 4000, labels="Median Home \nValue in 2000", 
+      col="darkslateblue", cex=1.8 )
+
+
+
+hist( mhv.00/1000, breaks=50, 
+      xlim=c(-200,800), yaxt="n", xaxt="n",
+      xlab="", cex.lab=1,
+      ylab="", main="",
+      col="darkslateblue", border="white" )
+
+abline( v=seq(0,1000, 100 ), lty=2, col="gray80" )
+
+text( 550, 3500, labels="Median Home \nValue in 2010", 
+      col="darkslateblue", cex=1.8 )
+
+axis( side=1, at=seq( from=0, to=1000, by=100 ), 
+      labels=paste0( "$", seq( from=0, to=1000, by=100 ), "k" ) )
+
+
+df <- data.frame( v90=mhv.90/1000, v00=mhv.00/1000 )
+df <- sample_n( df, 1000 )
+
+par( mar=c(4,5,3,2) )
+
+jplot( df$v90, df$v00, 
+       lab1="MHV in 1990", lab2="MHV in 2000",
+       xlim=c(0,1000), ylim=c(0,1000),
+       axes=F )
+
+abline( a=0, b=1, lty=2, col="gray" )
+axis( side=1, at=seq( from=0, to=1000, by=200 ), 
+      labels=paste0( "$", seq( from=0, to=1000, by=200 ), "k" ) )
+axis( side=2, at=seq( from=0, to=1000, by=200 ), 
+      labels=paste0( "$", seq( from=0, to=1000, by=200 ), "k" ) )
+```
+
+Change in MHV 1990-2000
+
+```{r, include=FALSE}
+# small initial values are skewing percentages
+#
+# an average home value below $10k is really low -
+# these must be mostly vacant lots?
+
+# interpretation is hard if there were no homes in 2000
+# and thus an artificially low MHV. i don't trust cases
+# that go from homes worth $10k to regular value
+# because it is more likely errors in data or noise
+# than meaningful variance 
+#
+# quick filter to remove all of the problematic obs
+# but need to go back and see which cases are problematic
+
+
+mhv.90[ mhv.90 < 10000 ] <- NA
+pct.change <- mhv.change / mhv.90
+summary( pct.change )
+
+# how many cases had increases above 500%
+sum( pct.change > 5, na.rm=T )
+
+# preview tracts with large increases in home values 
+# to see if increases make sense 
+
+d %>% 
+  filter( pct.change > 5 ) %>% 
+  head()
+
+```
+Plot % Change
+```{r}
+hg <-
+hist( pct.change, breaks=2000, 
+      xlim=c(-1,2), yaxt="n", xaxt="n",
+      xlab="", cex.main=1.5,
+      ylab="", main="Growth in Home Value by Census Tract 1990 to 2000",
+      col="gray40", border="white" )
+
+axis( side=1, at=seq( from=-1, to=2, by=0.5 ), 
+      labels=paste0( seq( from=-100, to=200, by=50 ), "%" ) )
+
+ymax <- max( hg$count )
+        
+mean.x <- mean( pct.change, na.rm=T )
+abline( v=mean.x, col="darkorange", lwd=2, lty=2 )
+text( x=1, y=(0.5*ymax), 
+      labels=paste0( "Mean = ", round(100*mean.x,0), "%"), 
+      col="darkorange", cex=1.8, pos=4 )
+
+median.x <- median( pct.change, na.rm=T )
+abline( v=median.x, col="dodgerblue", lwd=2, lty=2 )
+text( x=1, y=(0.6*ymax), 
+      labels=paste0( "Median = ", round(100*median.x,0), "%"), 
+      col="dodgerblue", cex=1.8, pos=4 )
+```
+
+Group Growth Rates by Metro Area
+
+
+
+Measuring Gentrification 
+
+```{r}
+# adjust 2000 home values for inflation 
+mhv.90 <- d.full$mhmval90 * 1.31 
+mhv.00 <- d.full$mhmval00
+
+mhv.change <- mhv.00 - mhv.90
+
+
+mhv.90[ mhv.90 < 10000 ] <- NA
+pct.change <- 100 * ( mhv.change / mhv.90 )
+summary( pct.change )
+
+d.full$mhv.90 <- mhv.90
+d.full$mhv.00 <- mhv.00
+d.full$mhv.change <- mhv.change
+d.full$pct.change <- pct.change
+
+summary(mhv.90)
+```
+
+
+## Part 2 Select Gentrification Variables
+
+```{r}
+
+d.all <- d.full1
+d4 <- select( d.all, 
+             
+             tractid, cbsa, cbsaname,            # ids / units of analysis
+             
+             
+             hinc00, hu00, own00, rent00,        # ses
+             hinc90, hu90, own90, rent90,
+             
+             empclf00, clf00, unemp00, prof00,   # employment 
+             empclf90, clf90, unemp90, prof90,
+             
+             dpov00, npov00, nfmpov00, dfmpov00, dapov00, dwpov00,    # poverty and race
+             dpov90, npov90, nfmpov90, dfmpov90, dapov90, dwpov90,
+             
+             ag25up00, hs00, col00,              # education 
+             ag25up90, hs90, col90,
+             
+             pop00.x, nhwht00, nhblk00, hisp00, asian00,  # race
+             pop90.x, nhwht90, nhblk90, hisp90, asian90
+             
+          ) # end select
+
+
+d4 <- 
+  d4 %>%
+  mutate( 
+          # 2000 variables
+          p.white.00 = 100 * nhwht00 / pop00.x,
+          p.black.00 = 100 * nhblk00 / pop00.x,
+          p.hisp.00 = 100 * hisp00 / pop00.x, 
+          p.asian.00 = 100 * asian00 / pop00.x,
+          p.hs.edu.00 = 100 * (hs00+col00) / ag25up00,
+          p.col.edu.00 = 100 * col00 / ag25up00,
+          p.prof.00 = 100 * prof00 / empclf00,
+          p.unemp.00 = 100 * unemp00 / clf00,
+          pov.rate.00 = 100 * npov00 / dpov00,
+          
+          # 1990 variables
+          p.white.90 = 100 * nhwht90 / pop90.x,
+          p.black.90 = 100 * nhblk90 / pop90.x,
+          p.hisp.90 = 100 * hisp90 / pop90.x, 
+          p.asian.90 = 100 * asian90 / pop90.x,
+          p.hs.edu.90 = 100 * (hs90+col90) / ag25up90,
+          p.col.edu.90 = 100 * col90 / ag25up90,
+          p.prof.90 = 100 * prof90 / empclf90,
+          p.unemp.90 = 100 * unemp90 / clf90,
+          pov.rate.90 = 100 * npov90 / dpov90 )
+```
+
+```{r}
+
+## change in hhincome
+## change in asian populus
+d4 <-
+  d4 %>%
+  group_by( cbsaname ) %>%
+  mutate( metro.median.pay.00 = median( hinc00, na.rm=T ),
+          metro.median.pay.90 = median( hinc90, na.rm=T ),
+          metro.asian.rank.90 = ntile( (100-p.asian.90), 100 ) ) %>%
+  ungroup() %>%
+  mutate(upward.pay.change = metro.median.pay.00 - metro.median.pay.90,
+          asian.race.change = p.asian.00 - p.asian.90)
+```
+
+Descriptive Statistics of Change Variables
+
+
+```{r}
+d4 <- data.frame(d4)
+stargazer( d4, 
+           type= "text", 
+           digits=0, 
+           summary.stat = c("min", "p25","median","mean","p75","max") )
+```
+
+Operationalizing Gentrification
+
+
+
+
+
+
+```{r}
+d7 <- select( d.all, 
+             
+             tractid, cbsa, cbsaname,            # ids / units of analysis
+             
+             
+             hinc00, hu00, own00, rent00,        # ses
+             hinc90, hu90, own90, rent90,
+             
+             empclf00, clf00, unemp00, prof00,   # employment 
+             empclf90, clf90, unemp90, prof90,
+             
+             dpov00, npov00, nfmpov00, dfmpov00, dapov00, dwpov00,    # poverty and race
+             dpov90, npov90, nfmpov90, dfmpov90, dapov90, dwpov90,
+             
+             ag25up00, hs00, col00,              # education 
+             ag25up90, hs90, col90,
+             
+             pop00.x, nhwht00, nhblk00, hisp00, asian00,  # race
+             pop90.x, nhwht90, nhblk90, hisp90, asian90
+             
+          ) # end select
+
+d7 <- 
+  d7 %>%
+  mutate( p.white = 100 * nhwht90 / pop90.x,
+          p.black = 100 * nhblk90 / pop90.x,
+          p.hisp = 100 * hisp90 / pop90.x, 
+          p.asian = 100 * asian90 / pop90.x,
+          p.hs = 100 * (hs90+col90) / ag25up90,
+          p.col = 100 * col90 / ag25up90,
+          p.prof = 100 * prof90 / empclf90,
+          p.unemp = 100 * unemp90 / clf90,
+          pov.rate = 100 * npov90 / dpov90 )
+```
+
+```{r}
+
+d7 <- 
+  d7 %>%
+  group_by( cbsaname ) %>%
+  mutate(p.rent.housing90 = 100 * rent90 / hu90,
+          unemployed.pov.pct90 = 100 * unemp90 / npov90,
+          fam.pov.pct.90 = 100 * nfmpov90 / dfmpov90,   #families with children in poverty
+         p.rent.housing00 = 100 * rent00 / hu00,
+        unemployed.pov.pct00 = 100 * unemp00 / npov00,
+        fam.pov.pct.00 = 100 * nfmpov00 / dfmpov00) %>%
+  ungroup() %>%
+  mutate(p.rent.housing.change = p.rent.housing00 - p.rent.housing90,
+         unemployed.pov.pct.change = unemployed.pov.pct00 - unemployed.pov.pct90,
+         fam.pov.pct.change = fam.pov.pct.00 - fam.pov.pct.90)
+
+```
+
+```{r}
+d7 <- data.frame(d7)
+stargazer( d7, 
+           type= "text", 
+           digits=0,
+           summary.stat = c("min", "p25","median","mean","p75","max") )
+```
+
+### Gentrification flags were chosen in reference to "Gentrification, race, and immigration in the changing American city" By Jackelyn Hwang and "Differentiating Pathways of Neighborhood Change in 50 US Metrolitan Areas" 
+
+```{r, cache=TRUE}
+# Gentrification flags chosen: 
+# income low
+# percent asians in poverty 
+# adjusted mhv low
+
+# low income (take from median and mean metro pay 1990)
+low.median.pay1990 <- d4$metro.median.pay.90 < 35000
+
+# above average population asian (taken from median dapov90)
+pov.asian.pop.high1990 <- d4$dapov90 > 112
+
+# low median house value (taken from median MHV for 1990)
+low.mhv.90 <- mhv.90 < 114000
+
+#Gentrification-post markers: 
+
+# pay change from 2000 - 1990 (inverse variable, by median)
+increase.in.pay <- d4$upward.pay.change > 12000
+
+# household income increase
+increase.household.income <- d4$hh.inc.rank.pct.change > 10
+
+# decrease in families with children in poverty
+fam.pov.pct.decrease <- d7$fam.pov.pct.change < 1
+
+# decrease in percentage renters of housing units
+pct.rent.housing.decrease <- d7$p.rent.housing.change > 0
+
+gent.flags <- (increase.in.pay + increase.household.income + fam.pov.pct.decrease + pct.rent.housing.decrease )
+
+# for knitting purposes  
+gent.flags.df <- data.frame (tractid = d$tractid, increase.in.pay, low.median.pay1990, 
+pov.asian.pop.high1990, low.mhv.90, increase.household.income, fam.pov.pct.decrease, pct.rent.housing.decrease)
+
+
+num.cand <-  sum( low.median.pay1990 + pov.asian.pop.high1990 + low.mhv.90 + 
+                          pct.rent.housing.decrease, na.rm = T )
+num.gent <- sum( gent.flags, na.rm=T )
+
+
+num.gent
+num.cand
+
+pct.gent <- 100 * num.gent / num.cand
+
+pct.gent 
+
+```
+## These variables seem to show a very high rate of gentrification for our predictions. They may also be incredibly misguided in their attempts to quantify concepts, simply because it is easy to confuse what should be reverse-coded and what should not, and when thresholds are appropriate.
+
+##  Part 3 Mapping 
+ 
+```{r}
+library( geojsonio )   # read shapefiles
+library( sp )          # work with shapefiles
+library( sf )          # work with shapefiles - simple features format
+library( mclust )      # cluster analysis 
+library( tmap )        # theme maps
+library( ggplot2 )     # graphing 
+library( ggthemes )    # nice formats for ggplots
+library( dplyr )       # data wrangling 
+library( pander )      # formatting RMD tables
+library( tidycensus )
+library(viridis)
+library( cartogram )  # spatial maps w/ tract size bias reduction
+library( maptools )   # spatial object manipulation 
+library(tigris)
+options(tigris_use_cache = TRUE)
+options(tigris_class = "sf")
+Sys.setenv(CENSUS_KEY= "101b48083a014d979387fab497e581ba4d68ff98")
+readRenviron("~/.Renviron")
+```
+ 
+```{r}
+crosswalk <- read.csv( "https://raw.githubusercontent.com/DS4PS/cpp-529-master/master/data/cbsatocountycrosswalk.csv",  stringsAsFactors=F, colClasses="character" )
+
+# search for citie names by strings, use the ^ anchor for "begins with" 
+
+grep( "^BOS", crosswalk$msaname, value=TRUE ) 
+```
+
+```{r}
+these.msp.bos <- crosswalk$msaname == "BOSTON-WORCESTER-LAWRENCE-LOWELL-BROCKTON, MA"
+these.fips.bos <- crosswalk$fipscounty[ these.msp.bos ]
+these.fips.bos <- na.omit( these.fips.bos )
+state.fips <- substr( these.fips.bos, 1, 2 )
+county.fips <- substr( these.fips.bos, 3, 5 )
+```
+
+
+
+```{r}
+
+df.gentr <-data.frame (tractid = d4$tractid, metro.pay.90 = d4$metro.median.pay.90, asian.pov90 = d4$dapov90)
+
+df.gents <- cbind(tractid = d$tractid, mhv.00, mhv.90, mhv.change)
+  
+df.gent.all <- left_join(df.gentr, df.gents, by = "tractid")
+
+df.gent.full <- inner_join(df.gent.all, gent.flags.df, by = "tractid")
+
+df.gent.full$GEOID <- substr(df.gent.full$tractid, 5, 18)
+df.gent.full$GEOID <- gsub ("-", "", df.gent.full$GEOID)
+class(df.gent.full)
+class(df.gent.full$GEOID)
+nrow(df.gent.full)
+
+```
+
+```{r}
+bos.pop <-
+get_acs( geography = "tract", variables = "B01003_001",
+         state = "25", county = county.fips[state.fips=="25"], geometry = TRUE ) %>% 
+         select( GEOID, estimate ) %>%
+         rename( POP=estimate )
+
+bos <- merge(bos.pop, df.gent.full, by.x="GEOID", by.y="GEOID" )
+
+nrow(bos.pop)
+
+nrow(bos) #assuming this loss of rows is due to slightly less GEOID codes for boston in MSP BOS than BOS ACS data
+
+bos <- bos[ ! st_is_empty( bos ) , ]
+
+nrow(bos)
+
+bos.sp <- as_Spatial( bos )
+
+class(bos.sp)
+
+
+```
+
+
+
+
+```{r}
+
+bos.sp <- spTransform( bos.sp, CRS("+init=epsg:3395"))
+
+bos.sp <- bos.sp[ bos.sp$POP != 0 & (! is.na( bos.sp$POP )) , ]
+
+# convert census tract polygons to dorling cartogram
+
+bos.sp$pop.w <- bos.sp$POP / 9000 # max(msp.sp$POP)   # standardizes it to max of 1.5
+bos_dorling <- cartogram_dorling( x=bos.sp, weight="pop.w", k=0.05 )
+```
+```{r}
+tm_shape( bos_dorling ) + 
+  tm_polygons( size="POP", col="mhv.90", n=7, style="quantile", palette="Spectral" ) +
+tm_layout( "MHV Boston: 1990", title.position=c("left","top") )
+```
+
+
+```{r}
+tm_shape( bos_dorling ) + 
+  tm_polygons( size="POP", col="metro.pay.90", n=6, style="quantile", palette="Spectral" ) +
+tm_layout( "Median Pay: 1990", title.position=c("left","top") )
+```
+
+```{r}
+tm_shape( bos_dorling ) + 
+  tm_polygons( size="POP", col="asian.pov90", n=10, style="quantile", palette="Spectral" ) +
+  tm_layout( "Asians in Poverty 1990", title.position=c("left","top") )
+```
+```{r}
+
+tm_shape( bos_dorling ) + 
+  tm_polygons( size="POP", col="mhv.change", n=10, style="quantile", palette="Spectral", midpoint = NA ) +
+  tm_layout( "MHV 1990-2000 Change", title.position=c("left","top") )
+```
+```{r}
+tm_shape( bos_dorling ) + 
+  tm_polygons( size="POP", col="increase.household.income", n=10, style="quantile", palette="Spectral", midpoint = NA ) +
+  tm_layout( "Increase Household Income 1990-2000", title.position=c("left","top") )
+```
+
+```{r, eval=FALSE}
+tm_shape( bos_dorling ) + 
+  tm_polygons( size="POP", col="pct.rent.housing.decrease", n=10, style="quantile", palette="Spectral", midpoint = NA ) +
+  tm_layout( "% Renters Decrease 1990-2000", title.position=c("left","top") )
+```
+
+
+
+## 1 Changes in home values coincide with patterns in low-income Asian neighborhoods, but also with tracts closer to large hospitals and companies downtown increasing in values. 
+
+
+
+## 2-According to the map the largest gains in home value occur in the center of the city. It is hard for me to believe that any areas of Boston real estate went down in price at any time in the last 50 years, but it does coincide with where the higher incomes were in 1990. 
+
+## 3 - Do you find any meaningful patterns in where gentrification occurs? Low to high home value changes coincide with proximity to the city, but also increases in salary appear to be on the margins of Boston- people do tend to move out of the city to an area where they can afford more house for less money. 
+
+## Visualinzing the data is helpful in understanding which gentrification variables are set too high, and how medians may not always be helpful when setting limits for change. 
+
+

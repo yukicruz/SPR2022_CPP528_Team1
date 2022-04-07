@@ -1,7 +1,6 @@
-
 ---
 title: "Lab3"
-author: "Kara Brick"
+author: "Megan Rowland"
 date: "4/1/2022"
 output: html_document
 ---
@@ -10,19 +9,22 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Part 1 Exploration of Data/Tutorial
 
 ```{r}
 # import specific functions
 # note: all of these are R objects that will be used throughout this .rmd file
 
-import::here("build_year",
+source(here::here("/labs/wk03/utilities.R"))
+
+import::here("clean_d",
+             "tidy_up_data",
+             "build_year",
              "RELEVANT_FILES",
              "obtain_crosswalk",
              "create_final_metadata_file",
              # notice the use of here::here() that points to the .R file
              # where all these R objects are created
-             .from = here::here("labs/wk03/utilities.R"),
+             .from = here::here("data/labs/wk03/utilities.R"),
              .character_only = TRUE)
 
 library( dplyr )
@@ -54,7 +56,7 @@ nrow( d )
 
 table( d$urban )
 
-d.full1 <- filter( d, urban == "urban" )
+d <- filter( d, urban == "urban" )
 
 ```
 Identify Common Variables
@@ -95,9 +97,9 @@ head( vars )
 Create Dataset for Analysis
 
 ```{r}
-d.full <- d  # keep a copy so don't have to reload 
+d.all <- d  # keep a copy so don't have to reload 
 
-d <- d.full  # store original in case you need to reset anything
+d <- d.all  # store original in case you need to reset anything
 
 d <- select( d, tractid, mhmval00, mhmval90, hinc90, 
              hu90, own90, rent90,  
@@ -313,7 +315,7 @@ axis( side=2, at=seq( from=0, to=1000, by=200 ),
 
 Change in MHV 1990-2000
 
-```{r, include=FALSE}
+```{r}
 # small initial values are skewing percentages
 #
 # an average home value below $10k is really low -
@@ -373,7 +375,23 @@ text( x=1, y=(0.6*ymax),
 
 Group Growth Rates by Metro Area
 
+```{r}
+mhv.change <- d$mhv.change
+pct.change  <-  d$pct.change
+d$mhv.90 <- mhv.90
+d$mhv.00 <- mhv.00
 
+d %>%
+  group_by( cbsaname ) %>%
+  summarize( ave.change = median( mhv.change, na.rm=T ),
+             ave.change.d = dollar( round(ave.change,0) ),
+             growth = 100 * median( pct.change, na.rm=T ) ) %>%
+  ungroup() %>%
+  arrange( - growth ) %>%
+  select( - ave.change ) %>% 
+  head( 25 ) %>%
+  pander()
+```
 
 Measuring Gentrification 
 
@@ -384,6 +402,10 @@ mhv.00 <- d.full$mhmval00
 
 mhv.change <- mhv.00 - mhv.90
 
+# small initial values are skewing percentages
+#
+# an average home value below $10k is really low -
+# these must be mostly vacant lots?
 
 mhv.90[ mhv.90 < 10000 ] <- NA
 pct.change <- 100 * ( mhv.change / mhv.90 )
@@ -393,20 +415,15 @@ d.full$mhv.90 <- mhv.90
 d.full$mhv.00 <- mhv.00
 d.full$mhv.change <- mhv.change
 d.full$pct.change <- pct.change
-
-summary(mhv.90)
 ```
 
-
-## Part 2 Select Gentrification Variables
+Select Gentrification Variables
 
 ```{r}
-
-d.all <- d.full1
-d4 <- select( d.all, 
+d.full1 <- d.all
+d3 <- select( d.all, 
              
              tractid, cbsa, cbsaname,            # ids / units of analysis
-             
              
              hinc00, hu00, own00, rent00,        # ses
              hinc90, hu90, own90, rent90,
@@ -414,20 +431,20 @@ d4 <- select( d.all,
              empclf00, clf00, unemp00, prof00,   # employment 
              empclf90, clf90, unemp90, prof90,
              
-             dpov00, npov00, nfmpov00, dfmpov00, dapov00, dwpov00,    # poverty and race
-             dpov90, npov90, nfmpov90, dfmpov90, dapov90, dwpov90,
+             dpov00, npov00,                     # poverty
+             dpov90, npov90,
              
              ag25up00, hs00, col00,              # education 
              ag25up90, hs90, col90,
              
-             pop00.x, nhwht00, nhblk00, hisp00, asian00,  # race
+             pop00.x, nhwht00, nhblk00, hisp00, asian00,   # race
              pop90.x, nhwht90, nhblk90, hisp90, asian90
              
           ) # end select
 
 
-d4 <- 
-  d4 %>%
+d3 <- 
+  d3 %>%
   mutate( 
           # 2000 variables
           p.white.00 = 100 * nhwht00 / pop00.x,
@@ -453,26 +470,43 @@ d4 <-
 ```
 
 ```{r}
-
-## change in hhincome
-## change in asian populus
-d4 <-
-  d4 %>%
+d3 <-
+  d3 %>%
   group_by( cbsaname ) %>%
-  mutate( metro.median.pay.00 = median( hinc00, na.rm=T ),
+  mutate( metro.mhv.pct.00 = ntile( mhv.00, 100 ),
+          metro.mhv.pct.90 = ntile( mhv.90, 100 ),
+          metro.median.pay.00 = median( hinc00, na.rm=T ),
           metro.median.pay.90 = median( hinc90, na.rm=T ),
-          metro.asian.rank.90 = ntile( (100-p.asian.90), 100 ) ) %>%
+          metro.race.rank.90 = ntile( (100-p.white.90), 100 ) ) %>%
   ungroup() %>%
-  mutate(upward.pay.change = metro.median.pay.00 - metro.median.pay.90,
-          asian.race.change = p.asian.00 - p.asian.90)
+  mutate( metro.mhv.pct.change = metro.mhv.pct.00 - metro.mhv.pct.90,
+          pay.change = metro.median.pay.00 - metro.median.pay.90,
+          race.change = p.white.00 - p.white.90,
+          mhv.change = mhv.00 - mhv.90 )
 ```
 
 Descriptive Statistics of Change Variables
 
+```{r}
+d3 <-           
+  d3 %>%
+  select( c( "tractid", "cbsa", "cbsaname",
+             "mhv.00", "mhv.90", "mhv.change","pct.change",
+          "p.white.00", "p.black.00", "p.hisp.00", "p.asian.00", 
+          "p.hs.edu.00", "p.col.edu.00", "p.prof.00",  "p.unemp.00", 
+          "pov.rate.00", "p.white.90", "p.black.90", "p.hisp.90", 
+          "p.asian.90", "p.hs.edu.90", "p.col.edu.90", "p.prof.90", 
+          "p.unemp.90", "pov.rate.90", "metro.mhv.pct.00", 
+          "metro.mhv.pct.90", "metro.median.pay.00", "metro.median.pay.90", 
+          "metro.mhv.pct.change", "pay.change", "race.change",
+          "metro.race.rank.90") ) 
+  
+# head( d3 ) %>% pander()
+```
 
 ```{r}
-d4 <- data.frame(d4)
-stargazer( d4, 
+d3 <- data.frame(d3)
+stargazer( d3, 
            type= "text", 
            digits=0, 
            summary.stat = c("min", "p25","median","mean","p75","max") )
@@ -480,267 +514,59 @@ stargazer( d4,
 
 Operationalizing Gentrification
 
-
-
-
-
-
 ```{r}
-d7 <- select( d.all, 
-             
-             tractid, cbsa, cbsaname,            # ids / units of analysis
-             
-             
-             hinc00, hu00, own00, rent00,        # ses
-             hinc90, hu90, own90, rent90,
-             
-             empclf00, clf00, unemp00, prof00,   # employment 
-             empclf90, clf90, unemp90, prof90,
-             
-             dpov00, npov00, nfmpov00, dfmpov00, dapov00, dwpov00,    # poverty and race
-             dpov90, npov90, nfmpov90, dfmpov90, dapov90, dwpov90,
-             
-             ag25up00, hs00, col00,              # education 
-             ag25up90, hs90, col90,
-             
-             pop00.x, nhwht00, nhblk00, hisp00, asian00,  # race
-             pop90.x, nhwht90, nhblk90, hisp90, asian90
-             
-          ) # end select
+# income
+# percent white
+# home values absolute
+# home value relative to metro
+# education stats ?
+# employment stats ?
+# income stats ?
+# growth of pop per tract (density) ?
 
-d7 <- 
-  d7 %>%
-  mutate( p.white = 100 * nhwht90 / pop90.x,
-          p.black = 100 * nhblk90 / pop90.x,
-          p.hisp = 100 * hisp90 / pop90.x, 
-          p.asian = 100 * asian90 / pop90.x,
-          p.hs = 100 * (hs90+col90) / ag25up90,
-          p.col = 100 * col90 / ag25up90,
-          p.prof = 100 * prof90 / empclf90,
-          p.unemp = 100 * unemp90 / clf90,
-          pov.rate = 100 * npov90 / dpov90 )
-```
 
-```{r}
+# home value in lower than average home in a metro in 1990
+poor.1990 <- d3$metro.mhv.pct.90 < 50  
 
-d7 <- 
-  d7 %>%
-  group_by( cbsaname ) %>%
-  mutate(p.rent.housing90 = 100 * rent90 / hu90,
-          unemployed.pov.pct90 = 100 * unemp90 / npov90,
-          fam.pov.pct.90 = 100 * nfmpov90 / dfmpov90,   #families with children in poverty
-         p.rent.housing00 = 100 * rent00 / hu00,
-        unemployed.pov.pct00 = 100 * unemp00 / npov00,
-        fam.pov.pct.00 = 100 * nfmpov00 / dfmpov00) %>%
-  ungroup() %>%
-  mutate(p.rent.housing.change = p.rent.housing00 - p.rent.housing90,
-         unemployed.pov.pct.change = unemployed.pov.pct00 - unemployed.pov.pct90,
-         fam.pov.pct.change = fam.pov.pct.00 - fam.pov.pct.90)
+# above average diversity for metro
+diverse.1990 <- d3$metro.race.rank.90 > 50 
+
+# home values increased more than overall city gains 
+# change in percentile rank within the metro
+mhv.pct.increase <- d3$metro.mhv.pct.change > 0
+
+# faster than average growth  
+# 25% growth in value is median for the country
+home.val.rise <- d3$pct.change > 25 
+
+# proportion of whites increases by more than 3 percent 
+# measured by increase in white
+loss.diversity <- d3$race.change > 3 
+
+g.flag <- poor.1990 & diverse.1990 & mhv.pct.increase & home.val.rise & loss.diversity
+
+num.candidates <-  sum( poor.1990 & diverse.1990, na.rm=T )
+num.gentrified <- sum( g.flag, na.rm=T )
+
 
 ```
 
 ```{r}
-d7 <- data.frame(d7)
-stargazer( d7, 
-           type= "text", 
-           digits=0,
-           summary.stat = c("min", "p25","median","mean","p75","max") )
-```
+num.gentrified 
+num.candidates
 
-### Gentrification flags were chosen in reference to "Gentrification, race, and immigration in the changing American city" By Jackelyn Hwang and "Differentiating Pathways of Neighborhood Change in 50 US Metrolitan Areas" 
-
-```{r, cache=TRUE}
-# Gentrification flags chosen: 
-# income low
-# percent asians in poverty 
-# adjusted mhv low
-
-# low income (take from median and mean metro pay 1990)
-low.median.pay1990 <- d4$metro.median.pay.90 < 35000
-
-# above average population asian (taken from median dapov90)
-pov.asian.pop.high1990 <- d4$dapov90 > 112
-
-# low median house value (taken from median MHV for 1990)
-low.mhv.90 <- mhv.90 < 114000
-
-#Gentrification-post markers: 
-
-# pay change from 2000 - 1990 (inverse variable, by median)
-increase.in.pay <- d4$upward.pay.change > 12000
-
-# household income increase
-increase.household.income <- d4$hh.inc.rank.pct.change > 10
-
-# decrease in families with children in poverty
-fam.pov.pct.decrease <- d7$fam.pov.pct.change < 1
-
-# decrease in percentage renters of housing units
-pct.rent.housing.decrease <- d7$p.rent.housing.change > 0
-
-gent.flags <- (increase.in.pay + increase.household.income + fam.pov.pct.decrease + pct.rent.housing.decrease )
-
-# for knitting purposes  
-gent.flags.df <- data.frame (tractid = d$tractid, increase.in.pay, low.median.pay1990, 
-pov.asian.pop.high1990, low.mhv.90, increase.household.income, fam.pov.pct.decrease, pct.rent.housing.decrease)
-
-
-num.cand <-  sum( low.median.pay1990 + pov.asian.pop.high1990 + low.mhv.90 + 
-                          pct.rent.housing.decrease, na.rm = T )
-num.gent <- sum( gent.flags, na.rm=T )
-
-
-num.gent
-num.cand
-
-pct.gent <- 100 * num.gent / num.cand
-
-pct.gent 
-
-```
-## These variables seem to show a very high rate of gentrification for our predictions. They may also be incredibly misguided in their attempts to quantify concepts, simply because it is easy to confuse what should be reverse-coded and what should not, and when thresholds are appropriate.
-
-##  Part 3 Mapping 
- 
-```{r}
-library( geojsonio )   # read shapefiles
-library( sp )          # work with shapefiles
-library( sf )          # work with shapefiles - simple features format
-library( mclust )      # cluster analysis 
-library( tmap )        # theme maps
-library( ggplot2 )     # graphing 
-library( ggthemes )    # nice formats for ggplots
-library( dplyr )       # data wrangling 
-library( pander )      # formatting RMD tables
-library( tidycensus )
-library(viridis)
-library( cartogram )  # spatial maps w/ tract size bias reduction
-library( maptools )   # spatial object manipulation 
-library(tigris)
-options(tigris_use_cache = TRUE)
-options(tigris_class = "sf")
-Sys.setenv(CENSUS_KEY= "101b48083a014d979387fab497e581ba4d68ff98")
-readRenviron("~/.Renviron")
-```
- 
-```{r}
-crosswalk <- read.csv( "https://raw.githubusercontent.com/DS4PS/cpp-529-master/master/data/cbsatocountycrosswalk.csv",  stringsAsFactors=F, colClasses="character" )
-
-# search for citie names by strings, use the ^ anchor for "begins with" 
-
-grep( "^BOS", crosswalk$msaname, value=TRUE ) 
-```
-
-```{r}
-these.msp.bos <- crosswalk$msaname == "BOSTON-WORCESTER-LAWRENCE-LOWELL-BROCKTON, MA"
-these.fips.bos <- crosswalk$fipscounty[ these.msp.bos ]
-these.fips.bos <- na.omit( these.fips.bos )
-state.fips <- substr( these.fips.bos, 1, 2 )
-county.fips <- substr( these.fips.bos, 3, 5 )
-```
-
-
-
-```{r}
-
-df.gentr <-data.frame (tractid = d4$tractid, metro.pay.90 = d4$metro.median.pay.90, asian.pov90 = d4$dapov90)
-
-df.gents <- cbind(tractid = d$tractid, mhv.00, mhv.90, mhv.change)
-  
-df.gent.all <- left_join(df.gentr, df.gents, by = "tractid")
-
-df.gent.full <- inner_join(df.gent.all, gent.flags.df, by = "tractid")
-
-df.gent.full$GEOID <- substr(df.gent.full$tractid, 5, 18)
-df.gent.full$GEOID <- gsub ("-", "", df.gent.full$GEOID)
-class(df.gent.full)
-class(df.gent.full$GEOID)
-nrow(df.gent.full)
+num.gentrified / num.candidates
 
 ```
 
 ```{r}
-bos.pop <-
-get_acs( geography = "tract", variables = "B01003_001",
-         state = "25", county = county.fips[state.fips=="25"], geometry = TRUE ) %>% 
-         select( GEOID, estimate ) %>%
-         rename( POP=estimate )
+# small initial values are skewing percentages
+#
+# an average home value below $10k is really low -
+# these must be mostly vacant lots?
 
-bos <- merge(bos.pop, df.gent.full, by.x="GEOID", by.y="GEOID" )
-
-nrow(bos.pop)
-
-nrow(bos) #assuming this loss of rows is due to slightly less GEOID codes for boston in MSP BOS than BOS ACS data
-
-bos <- bos[ ! st_is_empty( bos ) , ]
-
-nrow(bos)
-
-bos.sp <- as_Spatial( bos )
-
-class(bos.sp)
-
-
+mhv.90[ mhv.90 < 1000 ] <- NA
+pct.change <- 100 * ( mhv.change / mhv.90 )
+summary( pct.change )
 ```
-
-
-
-
-
-```{r}
-
-bos.sp <- spTransform( bos.sp, CRS("+init=epsg:3395"))
-
-bos.sp <- bos.sp[ bos.sp$POP != 0 & (! is.na( bos.sp$POP )) , ]
-
-# convert census tract polygons to dorling cartogram
-
-bos.sp$pop.w <- bos.sp$POP / 9000 # max(msp.sp$POP)   # standardizes it to max of 1.5
-bos_dorling <- cartogram_dorling( x=bos.sp, weight="pop.w", k=0.05 )
-```
-```{r}
-tm_shape( bos_dorling ) + 
-  tm_polygons( size="POP", col="mhv.90", n=7, style="quantile", palette="Spectral" ) +
-tm_layout( "MHV Boston: 1990", title.position=c("left","top") )
-```
-
-
-```{r}
-tm_shape( bos_dorling ) + 
-  tm_polygons( size="POP", col="metro.pay.90", n=6, style="quantile", palette="Spectral" ) +
-tm_layout( "Median Pay: 1990", title.position=c("left","top") )
-```
-
-```{r}
-tm_shape( bos_dorling ) + 
-  tm_polygons( size="POP", col="asian.pov90", n=10, style="quantile", palette="Spectral" ) +
-  tm_layout( "Asians in Poverty 1990", title.position=c("left","top") )
-```
-```{r}
-
-tm_shape( bos_dorling ) + 
-  tm_polygons( size="POP", col="mhv.change", n=10, style="quantile", palette="Spectral", midpoint = NA ) +
-  tm_layout( "MHV 1990-2000 Change", title.position=c("left","top") )
-```
-```{r}
-tm_shape( bos_dorling ) + 
-  tm_polygons( size="POP", col="increase.household.income", n=10, style="quantile", palette="Spectral", midpoint = NA ) +
-  tm_layout( "Increase Household Income 1990-2000", title.position=c("left","top") )
-```
-
-```{r}
-tm_shape( bos_dorling ) + 
-  tm_polygons( size="POP", col="pct.rent.housing.decrease", n=10, style="quantile", palette="Spectral", midpoint = NA ) +
-  tm_layout( "% Renters Decrease 1990-2000", title.position=c("left","top") )
-```
-
-## 1 Changes in home values coincide with patterns in low-income Asian neighborhoods, but also with tracts closer to large hospitals and companies downtown increasing in values. 
-
-
-
-## 2-According to the map the largest gains in home value occur in the center of the city. It is hard for me to believe that any areas of Boston real estate went down in price at any time in the last 50 years, but it does coincide with where the higher incomes were in 1990. 
-
-## 3 - Do you find any meaningful patterns in where gentrification occurs? Low to high home value changes coincide with proximity to the city, but also increases in salary appear to be on the margins of Boston- people do tend to move out of the city to an area where they can afford more house for less money. 
-
-## Visualinzing the data is helpful in understanding which gentrification variables are set too high, and how medians may not always be helpful when setting limits for change. 
 

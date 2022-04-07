@@ -1,5 +1,6 @@
-# ignore misc files
-testscript.R
+#Ignore misc. files
+test_script.r
+
 # History files
 .Rhistory
 .Rapp.history
@@ -49,3 +50,4 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+jestrii98.Rproj

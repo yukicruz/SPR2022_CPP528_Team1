@@ -9,4 +9,10 @@ Category Definitions:
   * race: defined by the race of persons
   * race-ses: defined by both the race and socioeconomic status (education, income, occupation) of persons
   * ses: defined by the socioeconomic status (education, income, occupation) of persons 
+
+**Raw**
+*Raw folder has all raw data files used in project analysis without any transformation
+
+**Rodeo**
+*Rodeo folder has all data transformation of raw files
   

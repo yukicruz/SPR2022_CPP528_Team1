@@ -1,0 +1,10 @@
+Exploration of Median Home Value change from 2000-2010, US Census data. 
+Looking at variables that are correlated to MHV change 
+
+
+To knit with import:: here, 
+clear global environment and rerun all chunks. 
+knit with stargazer tables set to type = 'html
+run in rmd with stargazer tables set to type = S_TYPE
+
+```

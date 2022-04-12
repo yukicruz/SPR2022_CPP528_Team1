@@ -52,7 +52,7 @@ d <- merge( d, md, by="tractid" )
 
 ```{r Descriptives, results='asis'}
 stargazer( df, 
-           type="S.TYPE", 
+           type=S_TYPE, 
            digits=0, 
            summary.stat = c("min", "p25","median","mean","p75","max") )
 ```
@@ -60,29 +60,30 @@ stargazer( df,
 ```{r Part 1 to find Variables, results='asis'}
 #Just home value
 df %>% head
+
 #All variables
 d %>% head()
 ```
 
 
-Part 1 - Data
-Similar to your previous lab, create a dataset that includes 2000 and 2010 census variables drop all rural census tracts.
+#### Part 1 - Data
+##### Similar to your previous lab, create a dataset that includes 2000 and 2010 census variables drop all rural census tracts.
 
-Create a variable that measures the growth of median home value from 2000 to 2010.
+##### Create a variable that measures the growth of median home value from 2000 to 2010.
 
-Omit cases that have a median home value less than $10,000 in 2000.
+##### Omit cases that have a median home value less than $10,000 in 2000.
 
-Omit cases with growth rates above 200%.
-
-
+##### Omit cases with growth rates above 200%.
 
 
-```{r Part 1 ,results='asis }
+
+
+```{r Part 1 ,results='asis', echo=FALSE}
 MHV.Change.00.to.10 <- df$MHV.Change.00.to.10
 MHV2000 <- df$MedianHomeValue2000
 
 
-#Only Urban, no rurl
+#Only Urban, no rural
 d <- filter( d, urban == "urban" )
 
 d <- select( d, tractid, 
@@ -91,9 +92,9 @@ d <- select( d, tractid,
              hu00, vac00, own00, rent00, h30old00,
              empclf00, clf00, unemp00, prof00,  
              dpov00, npov00,
-             ag25up00, hs00, col00, hinc00,
+             ag25up00, hs00, col00, 
              pop00.x, nhwht00, nhblk00, hisp00, asian00,
-             cbsa, cbsaname
+             cbsa, cbsaname,
              #NEW VARIABLE IDEAS
              #mar00,flabf00
              )
@@ -195,94 +196,4 @@ abline( v=median.x, col="dodgerblue", lwd=2, lty=2 )
 text( x=100, y=(0.6*ymax), 
       labels=paste0( "Median = ", round(median.x,0), "%"), 
       col="dodgerblue", cex=1.8, pos=4 )
-```
-```{r , results='asis }
-log.p.unemp  <- log10( d$p.unemp  + 1 )
-log.p.col<- log10( d$p.col + 1 )
-
-these <- sample( 1:length(log.p.unemp), 5000 )
-
-par( mfrow=c(1,2) )
-jplot( d$p.unemp[these], d$p.col[these], 
-       lab1="Poverty Rate", lab2="Vacant Homes (percent)",
-       main="Raw Measures" )
-jplot( log.p.unemp[these], log.p.col[these], 
-       lab1="Poverty Rate", lab2="Vacant Homes (percent)",
-       main="Log Transformed" )
-
-```
-```{r , results='asis }
-
-set.seed( 1234 )
-
-d2 <- select( d, mhv.growth, p.col, p.black, p.unemp  )
-
-# recode some vars to remove outliers and skew
-d2$mhv.growth[ d2$mhv.growth > 200 ] <- NA
-d2$p.col <- log10( d2$p.col + 1 )
-d2$p.black <- log10( d2$p.black+ 1 )
-d2$p.unemp  <- log10( d2$p.unemp  + 1  )
-
-
-d4 <- sample_n( d2, 5000 ) %>% na.omit()
-pairs( d4, upper.panel=panel.cor, lower.panel=panel.smooth )
-
-```
-
-```{r , results='asis }
-
-reg.data <- d
-
-reg.data$mhv.growth[ d2$mhv.growth > 200 ] <- NA
-reg.data$p.col <- log10( d2$p.col + 1 )
-reg.data$p.black <- log10( d2$p.black+ 1 )
-reg.data$p.unemp <- log10( d2$p.unemp  + 1  )
-
-
-m1 <- lm( mhv.growth ~  p.black, data=reg.data )
-m2 <- lm( mhv.growth ~  p.col, data=reg.data )
-m3 <- lm( mhv.growth ~  p.unemp  , data=reg.data )
-m4 <- lm( mhv.growth ~ p.col+p.unemp  , data=reg.data )
-
-
-stargazer( m2, m3, m4, 
-           type=S_TYPE, digits=2,
-           omit.stat = c("rsq","f") )
-
-
-```
-```{r , results='asis }
-d5 <- filter( d, cbsaname %in% 
-                c("Tyler, TX",
-                  "Minneapolis-St. Paul-Bloomington, MN-WI",
-                  "San Francisco-San Mateo-Redwood City,CA") )
-
-d5$cbsaname <- factor( d5$cbsaname, labels=c("MSP-MN","SF-CA","Tyler-TX") )
-```
-
-```{r  results='asis }
-d.reg <- d
-
-d.reg$mhv.growth[ d.reg$mhv.growth > 200 ] <- NA
-d.reg$p.unemp <- log10( d.reg$p.unemp + 1 )
-d.reg$p.col <- log10( d2$p.col + 1 )
-d.reg$p.black <- log10( d2$p.black+ 1 )
-d.reg$p.unemp <- log10( d2$p.unemp  + 1  )
-
-# average growth in median home value for the city
-d.reg <- 
-  d.reg %>%
-  group_by( cbsaname ) %>%
-  mutate( metro.mhv.growth = 100 * median( mhv.growth, na.rm=T ) ) %>%
-  ungroup() 
-
-m1 <- lm( mhv.growth ~ p.unemp, data=d.reg )
-m2 <- lm( mhv.growth ~  p.col, data=reg.data )
-m3 <- lm( mhv.growth ~  p.black  , data=reg.data )
-mf <- lm( mhv.growth ~ p.unemp + cbsa+p.col+p.black , data=d.reg )
-stargazer( m1, m2, m3, mf,
-           type=S_TYPE, digits=2,
-           omit.stat = c("rsq","f"),
-           omit="cbsa",
-           add.lines = list(c("Metro Fixed Effects:", "NO", "NO","YES")) )
 ```

@@ -5,7 +5,7 @@ date: '2022-04-12'
 output: html_document
 ---
 
-```{r programs to load, results='asis'}
+```{r programs to load, results='asis', echo=FALSE}
 # load necessary packages ----
 library( dplyr )
 library( here )
@@ -34,7 +34,7 @@ S_TYPE <-"text"
 INFLATION_RATE <- 1.28855 
 ```
 
-```{r Data, results='asis'}
+```{r Data, results='asis', echo=FALSE}
 # load necessary data ----
 # remember to use the here::here() function
 d1 <- readRDS( here::here( "data/rodeo/LTDB-2000.rds" ) )
@@ -52,12 +52,12 @@ d <- merge( d, md, by="tractid" )
 
 ```{r Descriptives, results='asis'}
 stargazer( df, 
-           type="S.TYPE", 
+           type=S_TYPE,
            digits=0, 
            summary.stat = c("min", "p25","median","mean","p75","max") )
 ```
 
-```{r Part 1 to find Variables, results='asis'}
+```{r Part 1 to find Variables, results='asis', echo=FALSE}
 #Just home value
 df %>% head
 #All variables
@@ -65,19 +65,19 @@ d %>% head()
 ```
 
 
-Part 1 - Data
-Similar to your previous lab, create a dataset that includes 2000 and 2010 census variables drop all rural census tracts.
+#### Part 1 - Data
+##### Similar to your previous lab, create a dataset that includes 2000 and 2010 census variables drop all rural census tracts.
 
-Create a variable that measures the growth of median home value from 2000 to 2010.
+##### Create a variable that measures the growth of median home value from 2000 to 2010.
 
-Omit cases that have a median home value less than $10,000 in 2000.
+##### Omit cases that have a median home value less than $10,000 in 2000.
 
-Omit cases with growth rates above 200%.
-
-
+##### Omit cases with growth rates above 200%.
 
 
-```{r Part 1 ,results='asis }
+
+
+```{r Part 1, results='asis', echo=FALSE}
 MHV.Change.00.to.10 <- df$MHV.Change.00.to.10
 MHV2000 <- df$MedianHomeValue2000
 
@@ -159,7 +159,7 @@ mhv.growth[ mhv.growth > 200 ] <- NA
 
 ```
 
-```{r Median Home Value, results='asis'}
+```{r Median Home Value, results='asis', echo=FALSE}
 hist( df$MedianHomeValue2000, breaks=200, xlim=c(0,500000), 
       col="gray20", border="white",
       axes=F, 
@@ -173,7 +173,7 @@ axis( side=1, at=seq(0,500000,100000),
 abline( v=median( df$MedianHomeValue2000, na.rm=T ), col="orange", lwd=3 )
 ```
 
-```{r Percent Change in MHV 2000 to 2010, results='asis }
+```{r Percent Change in MHV 2000 to 2010, results='asis', echo=FALSE}
 hg <-
 hist( df$MHV.Growth.00.to.12, breaks=5000, 
       xlim=c(-100,200), yaxt="n", xaxt="n",
@@ -201,7 +201,7 @@ text( x=100, y=(0.6*ymax),
 
 Part 02
 
-```{r}
+```{r, results='asis', echo=FALSE}
 d.reg <- d
 
 d.reg$mhv.growth[ d.reg$mhv.growth > 200 ] <- NA
@@ -228,7 +228,7 @@ stargazer( m1, m2, m3,
 Check Skew - Percent Professionally Employed
 Logging does not improve
 
-```{r}
+```{r, echo=FALSE}
 
 par( mfrow=c(1,2) )
 
@@ -238,11 +238,11 @@ hist( log(d$p.prof+1), breaks=50, col="gray20", border="white",
       yaxt="n", xlab="", ylab="", main="Percent Professionally Employed (logged)")
 ```
 
-Multicollinearity
-Poverty rate and professionally employed are two distinct constructs as both coefficients did not get smaller and both standard errors did not get bigger when included in the same model. 
+### Multicollinearity
+##### Poverty rate and professionally employed are two distinct constructs, as both coefficients did not get smaller and both standard errors did not get bigger when included in the same model. 
 
 
-```{r}
+```{r, results='asis', echo=FALSE}
 reg.data <- d
 
 reg.data$mhv.growth[ reg.data$mhv.growth > 200 ] <- NA
@@ -260,10 +260,10 @@ stargazer( m1, m2, m3,
            omit.stat = c("rsq","f") )
 ```
 
-Group Structure 
-Model 2 and model 3 produce similar slopes for professionally employed, similar R-squares, and similar standard error of the regression 
+#### Group Structure 
+##### Model 2 and model 3 produce similar slopes for professionally employed, similar R-squares, and similar standard error of the regression 
 
-```{r}
+```{r, results='asis', echo=FALSE}
 d.reg <- d
 
 d.reg$mhv.growth[ d.reg$mhv.growth > 200 ] <- NA
@@ -290,14 +290,14 @@ stargazer( m1, m2, m3,
 
 Correlation - positive relationship between MHV growth and growth in professionally employed population 
 
-```{r}
+```{r, echo=FALSE}
 jplot( d.reg$prof.change, d.reg$mhv.growth, ylim=c(-50,100),
        lab1="prof employed change", lab2="MHV Growth" )
 ```
 Check Skew - Household income
 logging does not improve skew significantly 
 
-```{r}
+```{r, echo=FALSE}
 
 par( mfrow=c(1,2) )
 
@@ -307,10 +307,10 @@ hist( log(d$hinc00 +1), breaks=50, col="gray20", border="white",
       yaxt="n", xlab="", ylab="", main="Household Inc (logged)")
 ```
 
-Multicollinearity
-Poverty rate , percent unemployed, percent professionally employed are distinct constructs to household income as both coefficients did not get smaller and both standard errors did not get bigger when included in the same model for each iteration. 
+#### Multicollinearity
+##### Poverty rate , percent unemployed, percent professionally employed are distinct constructs to household income as both coefficients did not get smaller and both standard errors did not get bigger when included in the same model for each iteration. 
 
-```{r}
+```{r, echo=FALSE}
 d.reg <- d
 
 d.reg$mhv.growth[ d.reg$mhv.growth > 200 ] <- NA
@@ -351,10 +351,10 @@ stargazer( m1, m2, m3,
            type=S_TYPE, digits=2,
            omit.stat = c("rsq","f") )
 ```
-Group Structure 
-Model 2 and model 3 produce similar R-squares, and similar standard error of the regression.
+#### Group Structure 
+##### Model 2 and model 3 produce similar R-squares, and similar standard error of the regression.
 
-```{r, results="asis"}
+```{r, results='asis', echo=FALSE}
 
 
 m1 <- lm( mhv.growth ~ metro.median.pay.change, data=d.reg )
@@ -368,8 +368,8 @@ stargazer( m1, m2, m3,
            add.lines = list(c("Metro Fixed Effects:", "NO", "NO","YES")) )
 ```
 
-Correlation 
-There is a positive correlation between metro median pay change and median home value growth. 
+#### Correlation 
+##### There is a positive correlation between metro median pay change and median home value growth. 
 
 ```{r}
 jplot( d.reg$metro.median.pay.change, d.reg$mhv.growth, ylim=c(-50,100),

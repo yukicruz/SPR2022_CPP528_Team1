@@ -18,8 +18,11 @@ library(knitr)
 # set randomization seed ----
 set.seed( 1234 )
 
+# source(here::here("labs/wk04/lab_04_source.R"))
+
 # load necessary functions and objects ----
 # note: all of these are R objects that will be used throughout this .rmd file
+
 import::here("S_TYPE",
        "panel.cor",
         "panel.smooth",
@@ -31,6 +34,7 @@ import::here("S_TYPE",
              # where all these R objects are created
            .from = here::here("labs/wk04/lab_04_source.R"),
          .character_only = TRUE) 
+
 S_TYPE <-"text"
 INFLATION_RATE <- 1.28855 
 ```
@@ -213,22 +217,6 @@ pairs( d3, upper.panel=panel.cor, lower.panel=panel.smooth )
 ```
 
 
-```{r , echo=FALSE}
-log.p.unemp  <- log10( d$p.unemp  + 1 )
-log.p.col<- log10( d$p.col + 1 )
-
-these <- sample( 1:length(log.p.unemp), 5000 )
-
-par( mfrow=c(1,2) )
-jplot( d$p.unemp[these], d$p.col[these], 
-       lab1="Poverty Rate", lab2="College Graduates (percent)",
-       main="Raw Measures" )
-jplot( log.p.unemp[these], log.p.col[these], 
-       lab1="Poverty Rate", lab2="College Graduates (percent)",
-       main="Log Transformed" )
-
-```
-
 ### Adjusting for skew
 
 ```{r , echo=FALSE}
@@ -341,7 +329,7 @@ stargazer( m1, m2, m3, m4,
 ```
 
 
-### The most important factor is percent unemployment. It has a strong correlation to median home value change, but using the fixed effects model, this correlation is decreased. There is probably missing variable bias, meaning that there is another variable that is not a part of our dataset that is causing variation that is attributed to percent unemployment but the relationship is probably not actually true, and we can look for alternative data analysis and wrangling with relative certainty that we are not simply trying to find a model to suit our wishes but one that more accurately reflects reality. If we could use more variables or look at more granular units, we could probably find a regression that is negative. 
+### The most important factor is percent unemployment. It has a strong correlation to median home value change, but using the fixed effects model, this correlation is decreased. There is probably missing variable bias, meaning that there is another variable that is not a part of our dataset that is causing variation that is attributed to percent unemployment but the relationship is probably not an accurate portrayal. We can look for alternative data analysis and wrangling with relative certainty that we are not simply trying to find a model to suit our wishes but one that more accurately reflects reality. If we could use more variables or look at more granular units, we could probably find a regression that is negative. 
 
 
-### The college graduate relationship goes from negative to less negative, which means that the fixed effects model accounted for variation in the intercepts by metro area, but that there is either still more to the story in terms of data analysis or that college graduates truly lower home values (student debt could be a factor). It's possible that if we look by tract we may see a different relationship of college grads to median home value.
+### The college graduate relationship goes from negative in its first regression to positive in the full fixed effects model, which means that the fixed effects model accounted for variation in the intercepts by metro area, but that there is either still more to the story in terms of data analysis or that college graduates truly lower home values (student debt could be a factor). It's possible that if we look by tract we may see a different relationship of college grads to median home value.

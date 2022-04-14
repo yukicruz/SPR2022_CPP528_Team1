@@ -1,6 +1,11 @@
-
+---
+  title: "Week 4 - Predicting Change"
+author: "Team 1"
+date: '2022-04-12'
+output: html_document
+---
   
-
+  ```{r setup, echo=FALSE, include=FALSE, fig.align = "center", dev='png'}
 # load necessary packages
 library( dplyr )
 library( here )
@@ -12,7 +17,7 @@ library(knitr)
 
 # set randomization seed ----
 set.seed( 1234 )
-
+source(here::here("labs/wk04/lab_04_source.R"))
 # load necessary functions and objects ----
 # note: all of these are R objects that will be used throughout this .rmd file
 import::here("S_TYPE",
@@ -28,8 +33,9 @@ import::here("S_TYPE",
              .character_only = TRUE) 
 S_TYPE <-"text"
 INFLATION_RATE <- 1.28855 
+```
 
-
+```{r, echo=FALSE}
 # load necessary data ----
 # remember to use the here::here() function
 d1 <- readRDS( here::here( "data/rodeo/LTDB-2000.rds" ) )
@@ -43,23 +49,24 @@ d <- merge( d1, d2, by="tractid" )
 d <- merge( d, md, by="tractid" )
 
 
+```
 
 ## Part 1 - Data
 
-## Summary stats of MHV
-
+```{r, results='asis', echo=FALSE}
 stargazer (df, 
-           type = S_TYPE, 
+           type = 'html', 
            digits=0, 
            summary.stat = c("min", "p25","median","mean","p75","max") )
-
+```
 
 ### Dataframe Preview
 
-
+```{r, echo=FALSE}
 
 kable(head(df), 'html')
 
+```
 
 
 
@@ -68,17 +75,14 @@ kable(head(df), 'html')
 
 
 
-
-# set to datafram
+```{r, echo=FALSE}
 MHV.Change.00.to.10 <- df$MHV.Change.00.to.10
-#assign variable
 MHV2000 <- df$MedianHomeValue2000
 
 
-#Only Urban, no rural
+#Only Urban, no rurl
 d <- filter( d, urban == "urban" )
 
-# Select variabls
 d <- select( d, tractid, 
              mhmval00, mhmval12, 
              hinc00, 
@@ -91,8 +95,6 @@ d <- select( d, tractid,
              #NEW VARIABLE IDEAS
              #mar00,flabf00
 )
-
-# create percentage variables
 d <- 
   d %>%
   mutate( # percent white in 2000
@@ -151,10 +153,10 @@ p.MHV.Growth.00.to.10 <- 100 * ( MHV.Change.00.to.10 / MHV2000 )
 p.MHV.Growth.00.to.10[ p.MHV.Growth.00.to.10 > 200 ] <- NA
 mhv.growth[ mhv.growth > 200 ] <- NA
 
+```
 
 
-### MHV 2000 data viz
-
+```{r,echo = F}
 hist( df$MedianHomeValue2000, breaks=200, xlim=c(0,500000), 
       col="gray20", border="white",
       axes=F, 
@@ -166,8 +168,9 @@ axis( side=1, at=seq(0,500000,100000),
       labels=c("$0","$100k","$200k","$300k","$400k","$500k") )
 
 abline( v=median( df$MedianHomeValue2000, na.rm=T ), col="orange", lwd=3 )
+```
 
-### MHV Growth data viz
+```{r, echo=FALSE}
 hg <-
   hist( df$MHV.Growth.00.to.12, breaks=5000, 
         xlim=c(-100,200), yaxt="n", xaxt="n",
@@ -191,11 +194,13 @@ abline( v=median.x, col="dodgerblue", lwd=2, lty=2 )
 text( x=100, y=(0.6*ymax), 
       labels=paste0( "Median = ", round(median.x,0), "%"), 
       col="dodgerblue", cex=1.8, pos=4 )
+```
 
 ## Part 2 - Predicting MHV Change
 
 ### Checking Skew
 
+```{r, echo=FALSE}
 # create subset to visualize in correlation matrix 
 d6 <- select( d, mhv.growth, p.col,  p.black, p.unemp )
 
@@ -205,28 +210,12 @@ d3 <- sample_n( d6, 10000 ) %>% na.omit()
 
 # correlation plots
 pairs( d3, upper.panel=panel.cor, lower.panel=panel.smooth )
-
-
-
-### Logs to adjust for skew
-
-log.p.unemp  <- log10( d$p.unemp  + 1 )
-log.p.col<- log10( d$p.col + 1 )
-
-these <- sample( 1:length(log.p.unemp), 5000 )
-
-par( mfrow=c(1,2) )
-jplot( d$p.unemp[these], d$p.col[these], 
-       lab1="Poverty Rate", lab2="College Graduates (percent)",
-       main="Raw Measures" )
-jplot( log.p.unemp[these], log.p.col[these], 
-       lab1="Poverty Rate", lab2="College Graduates (percent)",
-       main="Log Transformed" )
-
+```
 
 
 ### Adjusting for skew
 
+```{r , echo=FALSE}
 
 set.seed( 1234 )
 
@@ -242,13 +231,13 @@ d2$p.unemp  <- log10( d2$p.unemp  + 1  )
 d4 <- sample_n( d2, 5000 ) %>% na.omit()
 pairs( d4, upper.panel=panel.cor, lower.panel=panel.smooth )
 
-
+```
 
 
 ### Regression shows mutlicolinearity in coefficient and SD for percent black. Standard deviations increased for all variables but coefficents increased for percent college graduates and percent unemployed.
 
 
-### Regression tables of log variables to see relationships
+```{r, results='asis', echo=FALSE}
 
 reg.data <- d
 
@@ -270,13 +259,12 @@ stargazer( m1,m2, m3, m4,
            omit.stat = c("rsq","f") )
 
 
-
+```
 
 ### College graduates appear to have a negative correlation to median home value change in a regression with median home value. So, we will use a fixed effects model to account for unit level bias. 
 
 
-### Setting metro data for fixed effects model
-
+```{r , echo=FALSE}
 d5 <- filter( d, cbsaname %in% 
                 c("Tyler, TX",
                   "Minneapolis-St. Paul-Bloomington, MN-WI",
@@ -304,11 +292,11 @@ plot( d5$p.unemp, d5$mhv.growth,
 abline( b0.syracuse, b1, col="steelblue", lwd=3 )
 abline( b0.tyler, b1, col="green3", lwd=3 )
 abline( b0.youngston, b1, col="darkorange", lwd=3 )
+```
 
 
 
-#### Logged regression with fixed effect 
-
+```{r  results='asis', echo=FALSE}
 d.reg <- d
 
 d.reg$mhv.growth[ d.reg$mhv.growth > 200 ] <- NA
@@ -334,10 +322,12 @@ stargazer( m1, m2, m3, m4,
            omit.stat = c("rsq","f"),
            omit="cbsa",
            add.lines = list(c("Metro Fixed Effects:", "NO", "NO","NO", "YES")) )
-
+```
 
 
 ### The most important factor is percent unemployment. It has a strong correlation to median home value change, but using the fixed effects model, this correlation is decreased. There is probably missing variable bias, meaning that there is another variable that is not a part of our dataset that is causing variation that is attributed to percent unemployment but the relationship is probably not actually true, and we can look for alternative data analysis and wrangling with relative certainty that we are not simply trying to find a model to suit our wishes but one that more accurately reflects reality. If we could use more variables or look at more granular units, we could probably find a regression that is negative. 
 
 
-### The college graduate relationship goes from negative to less negative, which means that the fixed effects model accounted for variation in the intercepts by metro area, but that there is either still more to the story in terms of data analysis or that college graduates truly lower home values (student debt could be a factor). It's possible that if we look by tract we may see a different relationship of college grads to median home value.
+### The college graduate relationship goes from negative in its first regression to positive in the full fixed effects model, which means that the fixed effects model accounted for variation in the intercepts by metro area, but that there is either still more to the story in terms of data analysis or that college graduates truly lower home values (student debt could be a factor). It's possible that if we look by tract we may see a different relationship of college grads to median home value.
+
+

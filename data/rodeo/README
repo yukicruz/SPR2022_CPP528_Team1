@@ -5,4 +5,15 @@ Data of categorized by years 1970, 1980, 1990, 2000, 2010, the meta data, and th
 How to use files:
 Download the raw data and make sure to save the data so that it can be read by the program.
 
+**Data Dictionary**
+Category Definitions:
+  * age: defined by the age of persons
+  * age-race : defined by both the age of persons and their race
+  * ethnicity-immigration: defined by the country where a person is born, place they immigrated from, or their ancestry/origin 
+  * housing: defined by attributes related to housing structures or the housing of persons. 
+  * marital-status: defined by whether a person is married, widowed, divorced, separated, or single. 
+  * race: defined by the race of persons
+  * race-ses: defined by both the race and socioeconomic status (education, income, occupation) of persons
+  * ses: defined by the socioeconomic status (education, income, occupation) of persons 
+
   

@@ -1,4 +1,4 @@
-# CPP-528-Project
+# CPP-528-Project Data Folder Contents
 
 **Raw**
  * Raw folder has all raw data files used in project analysis without any transformation. “raw” means the data as it arrived from whatever site we retrieved it from, or the file exactly how it was exported from a custom data collection tool like an online survey program. Anything that documents the data collection process lives here. 

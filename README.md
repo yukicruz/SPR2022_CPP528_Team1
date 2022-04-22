@@ -4,9 +4,8 @@ In this project we are ultimately interested in building models to explain neigh
 
 **Packages used:**
 Thanks to the renv package, you can install the necessary R packages by running this line of code:
-
-# restore a project's dependencies from the renv.lock file (located in the root directory)**
-renv::restore(here::here())
+   #### restore a project's dependencies from the renv.lock file (located in the root directory)
+    renv::restore(here::here())
 
 
 **Contact information:**

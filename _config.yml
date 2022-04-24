@@ -1,5 +1,23 @@
-title: Architect theme
+title: Project CPP 528
+author: Jestrii Acosta, Kara Brick, Mariam Mahmoud , Megan Rowland , Rached Fares
 description: Architect is a theme for GitHub Pages.
+# Jekyll settings
+permalinkm: /:title/
+paginate: 2
+exerpt_seproator: "n\n\n"
+# Theme Setings
+show_exerpts: false
+date_format: "%B, %d, %Y"
+dark_theme: true
+dark_header: false
+minimal_theme: true
+naivgation:
+  - index.html
+  - alternate_index.md
+  - about.md
+  - test.md
+ icons:
+ 
 show_downloads: true
 google_analytics:
-theme: jekyll-theme-architect
+#theme: jekyll-theme-architect

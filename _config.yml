@@ -5,28 +5,29 @@ description: "Architect is a theme for GitHub Pages."
 # Jekyll settings
 permalinkm: /:title/
 paginate: 2
-exerpt_seproator: "n\n\n"
+exerpt_separator: "n\n\n"
 
 # Theme Setings
-show_exerpts: false
+show_excerpts: false
 date_format: "%B, %d, %Y"
 dark_theme: true
 dark_header: false
 minimal_theme: true
-naivgation:
+navigation:
   - exec.md
   - index.md
   - about.md
   - test.md
- icons:               #show icons in the header, for all possible icons see http://fontaesomw.io/icons/
-
+icons:               #show icons in the header, for all possible icons see http://fontaesomw.io/icons/
 # envelope: "mailto:niklasbuschmann@users.noreply.github.com"
- # github: "https//github.com/R-Class.CPP-528-Project/edit/main"
- comments:
+# github: "https//github.com/R-Class.CPP-528-Project/edit/main"
+
+comments:
  #disqus: "disqus-contrast"
  #isso: "comments.mysite.org"
- remote_theme: niklasbuschmann/contrast
- pluginns:
+
+remote_theme: niklasbuschmann/contrast
+plugins:
  -jekyll-remote-theme
  -jekyll-feed
  -jekyll-paginate

@@ -2,3 +2,5 @@ title: "Project CPP 528"
 author: "Jestrii Acosta, Kara Brick, Mariam Mahmoud , Megan Rowland , Rached Fares"
 description: "Architect is a theme for GitHub Pages."
 
+
+theme: jekyll-theme-cayman

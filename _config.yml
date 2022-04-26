@@ -12,6 +12,7 @@ dark_theme: true
 dark_header: false
 minimal_theme: true
 naivgation:
+  - 
   - index.md
   - about.md
   - test.md

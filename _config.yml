@@ -12,13 +12,13 @@ dark_theme: true
 dark_header: false
 minimal_theme: true
 naivgation:
-  - 
+  - exec.md
   - index.md
   - about.md
   - test.md
- icons: #show icons in the header, for all possible icons see http://fontaesomw.io/icons/
+ icons:               #show icons in the header, for all possible icons see http://fontaesomw.io/icons/
  # envelope: "mailto:niklasbuschmann@users.noreply.github.com"
- #github: "https//github.com/R-Class.CPP-528-Project/edit/main"
+ # github: "https//github.com/R-Class.CPP-528-Project/edit/main"
  comments:
  #disqus: "disqus-contrast"
  #isso: "comments.mysite.org"

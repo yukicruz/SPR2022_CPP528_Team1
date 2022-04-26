@@ -1,7 +1,7 @@
 ---
 layout: default
 ---
-{% if site.show.excerpts and page.name == "index.html" %}
+{% if site.show_excerpts and page.name == "index.html" %}
 {% for page in paginator.post %}
 <article>
   {%- assign_date_format = site.date_format | default:; "% B, %d, %Y" -%}

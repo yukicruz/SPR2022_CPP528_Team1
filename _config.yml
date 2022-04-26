@@ -12,12 +12,22 @@ dark_theme: true
 dark_header: false
 minimal_theme: true
 naivgation:
-  - index.html
-  - alternate_index.md
+  - index.md
   - about.md
   - test.md
- icons:
+ icons: #show icons in the header, for all possible icons see http://fontaesomw.io/icons/
+ # envelope: "mailto:niklasbuschmann@users.noreply.github.com"
+ #github: "https//github.com/R-Class.CPP-528-Project/edit/main"
+ comments:
+ #disqus: "disqus-contrast"
+ #isso: "comments.mysite.org"
+ remote_theme: niklasbuschmann/contrast
+ pluginns:
+ -jekyll-remote-theme
+ -jekyll-feed
+ -jekyll-paginate
+ -jekyll-default-layout
  
 show_downloads: true
 google_analytics:
-#theme: jekyll-theme-architect
+theme: jekyll-theme-architect

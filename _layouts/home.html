@@ -1,7 +1,7 @@
 ---
 layout: default
 ---
-(% if site.show_excerpts and page.name == "index.html" %)
+{% if site.show_excerpts and page.name == "index.html" %}
 {% for page in paginator.posts %}
 <article>
   <header>

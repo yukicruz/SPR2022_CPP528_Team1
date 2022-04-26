@@ -3,7 +3,7 @@ author: "Jestrii Acosta, Kara Brick, Mariam Mahmoud , Megan Rowland , Rached Far
 description: "Architect is a theme for GitHub Pages."
 
 # Jekyll settings
-permalinkm: /:title/
+permalink: /:title/
 paginate: 2
 exerpt_separator: "n\n\n"
 
@@ -17,7 +17,7 @@ navigation:
   - exec.md
   - index.md
   - about.md
-  - test.md
+
 icons:               #show icons in the header, for all possible icons see http://fontaesomw.io/icons/
 # envelope: "mailto:niklasbuschmann@users.noreply.github.com"
 # github: "https//github.com/R-Class.CPP-528-Project/edit/main"

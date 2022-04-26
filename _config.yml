@@ -1,6 +1,6 @@
-title: "Generic Title"
-author: "Team member names"
-description: "Description of site"
+title: "Project CPP 528"
+author: "Jestrii Acosta, Kara Brick, Mariam Mahmoud , Megan Rowland , Rached Fares"
+description: "Architect is a theme for GitHub Pages."
 
 # Jekyll settings
 permalink: /:title/          # see https://jekyllrb.com/docs/permalinks/
@@ -15,7 +15,7 @@ dark_header: false           # uses dark header whether dark_theme is enabled or
 minimal_theme: true          # radically minimalistic theme
 
 navigation:                  # show navigation links in the header	
-  - index.md # Landing page with Table of Contents
+  - exec.md # Landing page with Table of Contents
 
 icons:                       # show icons in the header, for all possible icons see http://fontawesome.io/icons/
   # envelope: "mailto:niklasbuschmann@users.noreply.github.com"
